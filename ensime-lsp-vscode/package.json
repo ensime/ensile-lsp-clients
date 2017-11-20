@@ -31,13 +31,21 @@
 					"default": "DEBUG",
 					"description": "Log level of the Scala Language Server. Possible values are \"DEBUG\", \"ERROR\", \"INFO\", and \"WARN\"."
 				},
-				"scalaLanguageServer.javaPath": {
+				"scalaLanguageServer.javaHome": {
 					"type": [
 						"string",
-						"unde"
+						"null"
 					],
 					"default": null,
-					"description": "Path to java"
+					"description": "Absolute path to Java used to launch the Ensime language server."
+				},
+				"scalaLanguageServer.extraArgs": {
+					"type": [
+						"string",
+						"null"
+					],
+					"default": null,
+					"description": "Extra arguments passed to the Java VM when launching the Java Language Server. Eg. use `-noverify -Xmx1G  -XX:+UseG1GC -XX:+UseStringDeduplication` to bypass class verification, increase the heap size to 1GB and enable String deduplication with the G1 Garbage collector."
 				}
 			}
 		},

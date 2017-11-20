@@ -7,6 +7,7 @@ lazy val commonSettings = Seq(
 )
 
 val generateVscodePlugin = taskKey[Unit]("Task to generate vscode plugin")
+val generateAtomPlugin = taskKey[Unit]("Task to generate atom plugin")
 
 lazy val ensimeLspClient = (project in file("ensime-lsp-client"))
   .enablePlugins(ScalaJSPlugin)
@@ -27,5 +28,11 @@ lazy val ensimeLspClient = (project in file("ensime-lsp-client"))
         target.value/"clientutils.js",
         baseDirectory.value/".."/"ensime-lsp-vscode"/"src"/"clientutils.js")
       (fullOptJS in Compile).value
+    },
+    generateAtomPlugin := {
+      IO.copyFile(
+        target.value/"clientutils.js",
+        baseDirectory.value/".."/"ensime-lsp-atom"/"lib"/"clientutils.js")
+      (fastOptJS in Compile).value
     }
   )

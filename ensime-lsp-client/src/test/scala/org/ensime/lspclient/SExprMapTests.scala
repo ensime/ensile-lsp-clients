@@ -1,7 +1,8 @@
 package org.ensime.lspclient
 
 import fastparse.core.Parsed.Success
-import org.ensime.lspclient.SExprMapAst._
+import org.ensime.lspclient.parsers.SExprMapAst._
+import org.ensime.lspclient.parsers.SExprMapParser
 import utest._
 
 object SExprMapTests extends TestSuite {

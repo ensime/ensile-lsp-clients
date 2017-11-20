@@ -1,4 +1,4 @@
-package org.ensime.lspclient
+package org.ensime.lspclient.parsers
 
 object SExprMapAst {
 
@@ -16,8 +16,8 @@ object SExprMapAst {
 
 object SExprMapParser {
 
-  import fastparse.all._
   import SExprMapAst._
+  import fastparse.all._
 
   private val string =
     P("\"" ~ CharsWhile(_ != '\"', min = 0).! ~ "\"").map(SExprString)

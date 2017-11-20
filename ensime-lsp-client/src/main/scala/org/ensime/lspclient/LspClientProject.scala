@@ -5,12 +5,16 @@ import io.scalajs.nodejs.child_process.ChildProcess
 import io.scalajs.nodejs.fs._
 import io.scalajs.nodejs.path._
 import io.scalajs.nodejs.process
-import org.ensime.lspclient.SExprMapAst._
+import org.ensime.lspclient.parsers.SExprMapAst._
+import org.ensime.lspclient.parsers.{JavaArgs, SExprMapParser}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.js
-import scala.scalajs.js.JSConverters.JSRichFutureNonThenable
+import scala.scalajs.js.JSConverters.{
+  JSRichFutureNonThenable,
+  genTravConvertible2JSRichGenTrav
+}
 import scala.scalajs.js.annotation._
 
 object LspClientProject {
@@ -19,9 +23,10 @@ object LspClientProject {
 }
 
 @JSExportTopLevel("LspClientProject")
-class LspClientProject(javaPathFromConfig: js.UndefOr[String],
-                       rootPath: String,
-                       logLevel: String)
+class LspClientProject(rootPath: String,
+                       logLevel: String,
+                       javaHomeFromConfig: js.UndefOr[String] = js.undefined,
+                       javaExtraArgs: js.UndefOr[String] = js.undefined)
     extends js.Object {
 
   private val delimiter: String =
@@ -32,9 +37,9 @@ class LspClientProject(javaPathFromConfig: js.UndefOr[String],
       .get("JDK_HOME")
       .orElse(sys.env.get("JAVA_HOME"))
       .map(dir => Path.join(dir, "bin", "java"))
-      .orElse(javaPathFromConfig.toOption)
+      .orElse(javaHomeFromConfig.toOption)
 
-  private val javaCommand: String =
+  val javaCommand: String =
     javaHome.getOrElse("java")
 
   private def checkJavaRuntime(command: String): Future[Unit] = {
@@ -54,18 +59,20 @@ class LspClientProject(javaPathFromConfig: js.UndefOr[String],
   def checkRequirements(): js.Promise[Unit] = {
     if (!LspClientProject.delimiterForPlatform.contains(process.platform)) {
       js.Promise.reject(
-        js.JavaScriptException(s"Unsupported platform $process.platform"))
+        js.JavaScriptException(s"Unsupported platform ${process.platform}"))
     } else {
       checkJavaRuntime(javaCommand).toJSPromise
     }
   }
 
-  private def ensimeFilePath: Future[String] =
+  private val ensimeFilePathF: Future[String] =
     Future.successful(Path.join(rootPath, ".ensime")) // dumb solution
+
+  val ensimeFilePath: js.Promise[String] = ensimeFilePathF.toJSPromise
 
   def classpathFromEnsimeFile: Future[Either[String, String]] = {
     for {
-      filePath <- ensimeFilePath
+      filePath <- ensimeFilePathF
       data <- Fs.readFileFuture(filePath,
                                 new FileInputOptions(encoding = "utf8"))
     } yield {
@@ -98,18 +105,29 @@ class LspClientProject(javaPathFromConfig: js.UndefOr[String],
     }
   }
 
+  val parsedJavaExtraArgs: Seq[String] =
+    javaExtraArgs.toOption
+      .map(s =>
+        JavaArgs.javaArgs.parse(s) match {
+          case Failure(_, _, _) => Seq.empty
+          case Success(args, _) => args
+      })
+      .getOrElse(Seq.empty)
+
   def javaArgs: js.Promise[js.Array[String]] =
     classpathFromEnsimeFile
       .flatMap({
         case Left(err) => Future.failed(js.JavaScriptException(err))
         case Right(classpath) =>
           Future.successful(
-            js.Array("-classpath",
-                     classpath,
-                     "-Dlsp.workspace=" + rootPath,
-                     "-Dlsp.logLevel=" + logLevel,
-                     "org.ensime.server.Server",
-                     "--lsp"))
+            (
+              parsedJavaExtraArgs ++ Seq("-classpath",
+                                         classpath,
+                                         "-Dlsp.workspace=" + rootPath,
+                                         "-Dlsp.logLevel=" + logLevel,
+                                         "org.ensime.server.Server",
+                                         "--lsp")
+            ).toJSArray)
       })
       .toJSPromise
 

@@ -9,11 +9,15 @@ import * as ClientUtils from "./clientutils";
 
 export async function activate(context: ExtensionContext) {
 
-  let logLevel = workspace.getConfiguration().get('scalaLanguageServer.logLevel')
-  let javaPath = workspace.getConfiguration().get('scalaLanguageServer.javaPath')
+  let logLevel = workspace.getConfiguration().get('scalaLanguageServer.logLevel');
+  let javaHome = workspace.getConfiguration().get('scalaLanguageServer.javaHome');
+  let extraArgs = workspace.getConfiguration().get('scalaLanguageServer.extraArgs');
 
   let clientProject = new ClientUtils.LspClientProject(
-    javaPath === null ? undefined : javaPath, workspace.rootPath, logLevel
+    workspace.rootPath, 
+    logLevel, 
+    javaHome === null ? undefined : javaHome, 
+    extraArgs === null ? undefined : extraArgs
   );
 
   try {
@@ -23,6 +27,7 @@ export async function activate(context: ExtensionContext) {
     return;
   }
 
+  let javaCommand: string = clientProject.javaCommand;
   let javaArgs: string[];
   try {
     javaArgs = await clientProject.javaArgs;
@@ -31,10 +36,11 @@ export async function activate(context: ExtensionContext) {
     return;
   }
   let debugArgs: string[] = clientProject.debugArgs;
+  let ensimeFile: string = await clientProject.ensimeFilePath
 
   let serverOptions: ServerOptions = {
-    run: { command: 'java', args: javaArgs },
-    debug: { command: 'java', args: debugArgs.concat(javaArgs) }
+    run: { command: javaCommand, args: javaArgs },
+    debug: { command: javaCommand, args: debugArgs.concat(javaArgs) }
   };
 
   // Options to control the language client
@@ -42,7 +48,7 @@ export async function activate(context: ExtensionContext) {
     // Register the server for plain text documents
     documentSelector: ['scala'],
     synchronize: {
-        fileEvents: workspace.createFileSystemWatcher(workspace.rootPath + '/.ensime')
+        fileEvents: workspace.createFileSystemWatcher(ensimeFile)
     }
   };
 

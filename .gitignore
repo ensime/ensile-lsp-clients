@@ -17,3 +17,4 @@ out/
 *.vsix
 *.log
 clientutils.js
+package-lock.json
